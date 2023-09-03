@@ -50,23 +50,31 @@ resource "aws_secretsmanager_secret_version" "password" {
   secret_string = random_password.uber.result
 }
 
+data "aws_secretsmanager_secret" "master-db-password" {
+  arn = aws_db_instance.uber.master_user_secret.secret_arn
+}
+
+data "aws_secretsmanager_secret_version" "master-db-password" {
+  secret_id = data.aws_secretsmanager_secret.master-db-password.id
+}
+
 resource "aws_db_instance" "uber" {
-  allocated_storage      = 100
-  storage_type           = "gp3"
-  db_name                = "uber"
-  engine                 = "postgres"
-  instance_class         = var.rds_instance_size
-  identifier             = "ubersystem"
-  username               = "postgres"
-  password               = aws_secretsmanager_secret_version.password.secret_string
-  skip_final_snapshot    = true
-  multi_az               = false
-  publicly_accessible    = true
-  vpc_security_group_ids = [
+  allocated_storage           = 100
+  storage_type                = "gp3"
+  db_name                     = "uber"
+  engine                      = "postgres"
+  instance_class              = var.rds_instance_size
+  identifier                  = "ubersystem"
+  username                    = "postgres"
+  manage_master_user_password = true
+  skip_final_snapshot         = true
+  multi_az                    = false
+  publicly_accessible         = true
+  vpc_security_group_ids      = [
     aws_security_group.uber_rds.id
   ]
-  db_subnet_group_name   = aws_db_subnet_group.uber.name
-  depends_on = [
+  db_subnet_group_name = aws_db_subnet_group.uber.name
+  depends_on           = [
     aws_route_table_association.primary_route,
     aws_route_table_association.secondary_route
   ]
@@ -75,6 +83,6 @@ resource "aws_db_instance" "uber" {
 provider "postgresql" {
   host       = aws_db_instance.uber.address
   username   = aws_db_instance.uber.username
-  password   = aws_secretsmanager_secret_version.password.secret_string
+  password   = jsondecode(data.aws_secretsmanager_secret_version.master-db-password.secret_string)["password"]
   superuser  = false
 }
