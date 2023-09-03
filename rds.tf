@@ -51,7 +51,8 @@ resource "aws_secretsmanager_secret_version" "password" {
 }
 
 data "aws_secretsmanager_secret" "master-db-password" {
-  arn = aws_db_instance.uber.master_user_secret.secret_arn
+  //TODO:Maybe they'll remove the 1-element list as a direct dict some day.
+  arn = aws_db_instance.uber.master_user_secret.0.secret_arn
 }
 
 data "aws_secretsmanager_secret_version" "master-db-password" {
@@ -83,6 +84,8 @@ resource "aws_db_instance" "uber" {
 provider "postgresql" {
   host       = aws_db_instance.uber.address
   username   = aws_db_instance.uber.username
-  password   = jsondecode(data.aws_secretsmanager_secret_version.master-db-password.secret_string)["password"]
+  password = aws_secretsmanager_secret_version.password.secret_string
+  //TODO switch to use the actual master password here to do this setup
+  //password   = jsondecode(data.aws_secretsmanager_secret_version.master-db-password.secret_string)["password"]
   superuser  = false
 }
